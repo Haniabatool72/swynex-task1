@@ -8,6 +8,33 @@ const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
 
+function sendError(res, status, message) {
+  return res.status(status).json({
+    success: false,
+    error: {
+      message: message,
+      status: status
+    }
+  });
+}
+
+function authenticate(req, res, next) {
+  const apiKey = req.get("x-api-key");
+  const expectedKey = process.env.API_KEY;
+
+  if (!expectedKey || !apiKey) {
+    return sendError(res, 401, "API key required");
+  }
+
+  if (apiKey !== expectedKey) {
+    return sendError(res, 401, "Invalid API key");
+  }
+
+  next();
+}
+
+
+
 // Persistent SQLite database
 const db = new Database("swynex.db");
 
@@ -29,6 +56,7 @@ app.get("/health", (req, res) => {
 });
 
 // READ all tasks
+app.use("/api/tasks", authenticate);
 app.get("/api/tasks", (req, res) => {
   const tasks = db.prepare("SELECT * FROM tasks ORDER BY id DESC").all();
   res.json(tasks);
